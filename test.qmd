@@ -1,0 +1,35 @@
+
+```{r, echo = FALSE, message = FALSE}
+source(here::here("scripts/setup.R"))
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+# Read data
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf4.csv")
+
+# Filter and aggregate data
+df <- data %>%
+  filter(Year >= 2016 & Year <= 2021) %>%
+  group_by(Year, Group) %>%
+  summarise(popu = sum(POP), nbcrime = sum(acts)) %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+# Create ggplot heatmap
+gg_heatmap <- ggplot(df, aes(x = Year, y = Group, fill = criminality)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = brewer.pal(9, "Blues"), name = "Criminality") +
+  labs(title = "Criminality Heatmap", x = "Year", y = "Group") +
+  theme_minimal()
+
+# Convert ggplot to Plotly
+heatmap_plot <- ggplotly(gg_heatmap, height = 400, width = 700)
+
+# Display the plot
+heatmap_plot
+
+```
+

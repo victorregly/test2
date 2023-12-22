@@ -1,0 +1,33 @@
+---
+title: "France Real Estate"
+author:
+  - "REGLY Victor, VANNOYE Paul"
+  - "DELEAGE Melvil & SCHICK Valentin"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  html:
+    
+    toc: true
+    toc_depth: true
+    toc_float: true
+    toc-location: left
+    
+    grid:
+      sidebar-width: 250px
+      body-width: 900px
+      margin-width: 10px
+      
+    code-fold: true
+    code-tools: true
+    
+    embed-resources: true
+    number_sections: true
+    #includes:
+      #in_header: "custom_style.css"
+---
+
+
+```{r child = c('intro.qmd','data.qmd','eda.qmd')}
+```
+
+\#'intro.qmd','data.qmd',, 'eda.qmd', 'analysis.qmd', 'concl.qmd'

@@ -1,0 +1,23 @@
+# 1. Introduction
+
+```{r, echo = FALSE, message = FALSE}
+source(here::here("scripts/setup.R"))
+```
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/dsfba_project_test/report/image.png)
+
+## 1.1 Overview & motivation
+
+We are conducting an in-depth analysis of real estate prices in France, examining the influence of **macroeconomic factors** such as **unemployment rate, mortgage rate, inflation, and crime rate**. Our goal is to understand the dynamics and drivers behind price fluctuations. To achieve this, we will analyze historical data on real estate prices in France from 2014 to 2021, comparing trends with the United States and the United Kingdom. Additionally, we will explore the impact of raw material costs and the rental market.
+
+Our analysis covers macroeconomic indicators (**Consumer Price Index, Gross Domestic Product, household disposable income**), as well as demographic data and variables related to construction costs, safety, residence distribution, and housing types. Using instrumental variables, such as inflation and population growth, we aim to capture the underlying factors affecting real estate prices. We will also consider other data sources, including unemployment rate, demographic growth, crime rate, transportation access, education level, government policies, technological trends, climate conditions, standard of living, and real estate innovation. Through this analysis, we aim to provide valuable insights into the real estate market in France and its driving factors.
+
+Our curiosity and interest in the relationship between macroeconomics and the real estate market drive our motivation for this project. As a team of four students with backgrounds in management and political economy, we aim to gain a deeper understanding of the key drivers behind real estate prices in France from 2014 to 2021. By exploring the influence of macroeconomic indicators, demographic changes, and external factors, we aim to contribute to the existing body of knowledge on the real estate market and its connections to the broader economy. We believe that considering external factors, such as crime rates, will provide a more comprehensive understanding of the dynamics behind property values during this period. Through our analysis, we seek to contribute to the existing knowledge on the real estate market and its relationship with various external influences.
+
+## 1.2 Sub Questions
+
+1.  **Macroeconomic Indicators and Real Estate**: How do key macroeconomic indicators such as the unemployment rate, mortgage rates, and inflation trends directly correlate with the movement of real estate prices in various sectors (residential, commercial, luxury) in France?
+
+2.  **Demographic Influence on Regional Real Estate Prices**: In what ways do demographic changes, including population growth and migration patterns, specifically influence the real estate prices in France's urban, suburban, and rural regions?
+
+3.  **Impact of External Factors on Real Estate Valuation**: How significantly do external factors like fluctuations in raw material costs and the dynamics of the rental market affect the valuation and investment attractiveness of real estate properties in France?

@@ -1,0 +1,17 @@
+```{r, echo = FALSE, message = FALSE}
+source(here::here("scripts/setup.R"))
+```
+
+```{r , message = FALSE, echo = FALSE}
+
+#In this part I'm just uploading all the file paths
+
+PrixPopCrimeYearChomInt_vf <- read_csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomInt_vf.csv")
+
+mainXpop2 <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/mainXpop2.csv")
+
+dataset <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/dataset.csv")
+
+
+```
+

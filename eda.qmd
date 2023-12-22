@@ -1,0 +1,1385 @@
+# 3. Exploratory data analysis
+
+```{r, echo = FALSE, message = FALSE}
+source(here::here("scripts/setup.R"))
+```
+
+## 3.1 Real Estate
+
+In our exploratory data analysis (EDA) on real estate data in France spanning the years 2014 to 2021, we aim to generate meaningful visualizations that shed light on the dynamics within this dataset. Beyond internal real estate factors such as transaction numbers, property types, and pricing trends, we intend to integrate external variables like criminality rates, interest rates, unemployment rates, and population statistics. By incorporating these additional dimensions, we seek a comprehensive understanding of how real estate trends align or diverge in relation to broader socio-economic indicators. Through the creation of informative graphs, we aspire to visually represent and analyze the interplay between real estate dynamics and various external factors over the specified time period, facilitating a more nuanced interpretation of the dataset for our class project.
+
+this part is to split populatuon in 4 categories by size of departmenet and see trends
+
+#### Population range 
+
+```{r, echo = TRUE, message = FALSE}
+# Load required libraries
+PrixPopCrimeYearChomInt_vf <- read_csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomInt_vf.csv")
+
+library(dplyr)
+
+# Calculate summary statistics for population across all departments
+summary_population <- PrixPopCrimeYearChomInt_vf %>%
+  summarise(
+    Min_POP = min(POP),
+    Q25_POP = quantile(POP, 0.25),
+    Median_POP = median(POP),
+    Q75_POP = quantile(POP, 0.75),
+    Max_POP = max(POP)
+  )
+
+summary_table <- summary_population %>%
+  kable("html") %>%
+  kable_styling(full_width = FALSE)
+
+summary_table
+
+```
+
+### 3.1.1 Dwelling Transactions: Mutations
+
+The table below highlights instances in the dataset where a department contains fewer than 400 unique values, potentially leading to non-significant data points.
+
+```{r,echo = TRUE}
+
+mainXpop2 <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/mainXpop2.csv")
+
+# Create a table for DEPARTEMENT with less than 400 unique values
+departement_table <- mainXpop2 %>%
+  count(DEPARTEMENT, PLACE) %>%  # Include the PLACE column in the count
+  filter(n < 400) %>%
+  gt() %>%
+  fmt_number(columns = c(n), decimals = 0)  # Optional: Format the 'n' column
+
+# Print the table
+departement_table
+```
+
+This code segment categorizes the number of mutations (Nb_mutations) in property and house transactions into specific ranges or "tranches" to better understand the distribution of mutation counts. The purpose is to address potential skewness in the data and gain insights into transaction frequency patterns. By creating a categorical variable and visualizing the data through a histogram, the analysis aims to discern patterns in transaction frequency and improve the accuracy of insights, especially when dealing with very low mutation values that occur more frequently. This approach recognizes the importance of considering transaction frequency when computing averages to provide more reliable insights into real estate dynamics.
+
+```{r, echo = TRUE, warning = FALSE}
+
+mainXpop2 <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/mainXpop2.csv")
+                      
+# Créez les tranches
+tranches <- c(0, 5 , 10 , 50, 100, 1000, Inf)
+
+# Ajoutez une nouvelle colonne "Tranches" à votre dataframe
+mainXpop2$Tranches <- cut(mainXpop2$Nb_mutations, breaks = tranches, labels = c("0-5","6-10", "11-50", "51-100", "101-1000", "1000+"), include.lowest = TRUE)
+
+# Créez un histogramme
+histogram <- table(mainXpop2$Tranches)
+
+# Désactiver la notation scientifique pour l'axe y
+options(scipen = 999)
+
+# Dessinez l'histogramme avec l'axe y en notation décimale
+barplot(histogram, mainXpop2 = "Histogram of Nb_mutations per group", xlab = "Group", ylab = "Frequency", col = "orange", border = "black")
+```
+
+This R code transforms aggregated data into a long format, enabling a detailed analysis of the total number of house and apartment sales from 2014 to 2021. The resulting bar and line plot illustrates the trend over the years, indicating a consistent overall increase, except for a notable drop in 2017. This dip prompts further investigation in the subsequent analysis to discern whether it signifies a broader market trend or is attributed to specific factors. The visualization effectively captures the dynamic nature of real estate transactions, setting the stage for a more in-depth exploration of potential influencing factors.
+
+#### Transactions by type of good 
+
+```{r, echo = TRUE}
+
+dataset <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/dataset.csv")
+
+# Aggregate the data by year
+aggregated_data <- aggregate(cbind(NbMaisons_total, NbApparts_total) ~ Annee, data = dataset, sum)
+
+# Transform the data into long format
+aggregated_data_long <- gather(aggregated_data, key = "Type", value = "Total", -Annee)
+
+# Create a ggplot2 chart
+p <- ggplot(aggregated_data_long, aes(x = Annee, y = Total, fill = Type)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+  geom_line(aes(x = Annee, y = Total, group = Type, color = Type), linetype = "dashed", size = 1) +
+  labs(title = "Total number of house and apartment sales per year",
+       y = "Total number of sales",
+       x = "Year") +
+  scale_fill_manual(values = c("NbMaisons_total" = "blue", "NbApparts_total" = "red")) +
+  scale_color_manual(values = c("NbMaisons_total" = "blue", "NbApparts_total" = "red")) +
+  theme_minimal()
+
+# Convert ggplot2 chart to plotly
+p_plotly <- ggplotly(p, height = 400, width = 750)
+
+p_plotly <- p_plotly %>%
+  layout(
+    title = list(text = "Total number of house and apartment sales per year", font = list(size = 14)),
+    margin = list(l = 50, r = 50, b = 50, t = 80)
+  )
+
+# Display the interactive plot
+p_plotly
+```
+
+#### Transactions by group 
+
+here explain the group separation blabla and comment :
+
+```{r, echo = TRUE, message = FALSE, out.width='100%'}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+new_data <- data %>%
+  group_by(Year, Group) %>%
+  summarise(house = sum(NbHouses), appart = sum(NbApparts))
+
+# Reshape the data for plotting
+plot_data <- tidyr::gather(new_data, key = "Type", value = "Count", -Year, -Group)
+
+# Plotting the number of houses and apartments for each year, group, and type
+ggplot(plot_data, aes(x = Year, y = Count, fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_line(aes(group = Type, linetype = Type), position = position_dodge(0.9), size = 0.9) +
+  scale_linetype_manual(values = c("solid", "dashed")) +  # Set line types
+  facet_wrap(~Group) +  # Separate bars by group
+  labs(title = "Houses and Apartments sales per Year by Group",
+       x = "Year",
+       y = "Count",
+       fill = "Type") +
+  theme_minimal()
+```
+
+### 3.1.2 Average Price Observations
+
+blabla
+
+
+
+```{r, echo = TRUE}
+
+PrixPopCrimeYearChomInt_vf <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYear_vf.csv")
+
+library(ggplot2)
+library(dplyr)
+
+# Calculate the average Prixm2Moyen per year
+average_prices <- PrixPopCrimeYearChomInt_vf %>%
+  group_by(Annee) %>%
+  summarise(Avg_Prixm2Moyen = mean(Prixm2Moyen))
+
+# Plot the average Prixm2Moyen per year with filled area under the curve
+ggplot(average_prices, aes(x = Annee, y = Avg_Prixm2Moyen)) +
+  geom_line() +
+  labs(title = "Average Prixm2Moyen per Year",
+       x = "Year",
+       y = "Average Prixm2Moyen")
+```
+
+#### Average Price per group 
+le fameux blabla sur les groupes and trends
+
+
+```{r, echo = TRUE, message = FALSE}
+#breaks = c(0, 250000, 500000, 800000, 3000000),
+#labels = c("Group 1", "Group 2", "Group 3", "Group 4"))
+
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+new_data <- data %>%
+  group_by(Year, Group) %>%
+  summarise(avg_Prixm2Moyen = mean(AvgSQmeter))
+
+# Plotting the average Prixm2Moyen in terms of year by group
+ggplot(new_data, aes(x = Year, y = avg_Prixm2Moyen, color = Group)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Yearly Avg Price/m² by Group",
+       x = "Year",
+       y = "Price/m²",
+       color = "Group") +
+  theme_minimal()
+```
+
+This R code generates a histogram illustrating the distribution of the total average price per square meter (**`AveragePrice/m2`**) in the dataset. The visualization offers insights into the variation and frequency of average prices per square meter within the specified range (0 to 8000), contributing to the broader exploration of real estate market dynamics in France.
+
+#### Histogram price frequency 
+
+```{r, echo = TRUE}
+#TOTAL average price m2
+mainXpop2 <- read_csv("~/MyDoc/University/Master/Management/DATA/Dataset/mainXpop2.csv")
+hist(mainXpop2$Prixm2Moyen, main = "Average Price/m2", col = "pink", xlab = "Average Price", xlim = c(0, 8000))
+```
+
+The depicted left-skewed trend and consistent pattern over the years remain evident in the distribution of the average price per square meter (**`Prixm2Moyen`**). The increasing frequency of prices exceeding the average in both total average price and price per square meter suggests a cohesive upward trajectory in real estate values throughout the specified time period, emphasizing a linked relationship between the two metrics.
+
+#### Price frequency Curve 
+
+```{r, echo = TRUE, fig.width=15, fig.height=9}
+
+mainXpop2 <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/mainXpop2.csv")
+                      
+#TOTAL average price m2/ year 
+ggplot(mainXpop2, aes(x = Prixm2Moyen)) +
+  geom_histogram(binwidth = 100, position = "identity", alpha = 0.7, fill = "blue") +
+  labs(title = "Histogram of AveragePricem2",
+       x = "AvPricem2",
+       y = "Frequency") +
+  facet_wrap(~Annee, scales = "free",  ncol = 4) +
+  theme_minimal()+
+  scale_x_continuous(labels = scales::comma_format(scale = 1e-3, suffix = "k")) +
+  coord_cartesian(xlim = c(0, 8000))
+```
+
+This boxplot, although challenging to display 95 departments, effectively identifies outliers and offers insights into the variation in average price per square meter (**`Prixm2Moyen`**) within each department. This initial exploration sets the stage for focused visualizations and further investigation into specific aspects of data quality and dispersion in subsequent analyses.
+
+#### Boite a moustache plot Price per Department 
+
+```{r, echo = TRUE}
+
+# Boxplot for Price Distribution by Department with adjusted aspect ratio
+#boxplot(Prixm2Moyen ~ DEPARTEMENT, data = main, col = "skyblue", 
+#  main = "Price/m2 Distribution by Department")
+```
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/dsfba_project_test/report/plot1.png)
+
+#### Scatter: Price in terms of Surface 
+
+This scatterplot illustrates the relationship between the average surface area (**`SurfaceMoy`**) and the average price per square meter (**`Prixm2Moyen`**). The negative slope of the added regression line (abline) indicates an inverse correlation: as the surface area increases, the average price per square meter tends to decrease. This suggests a potential trend where larger properties have a lower price per square meter compared to smaller ones, providing valuable insights into the pricing dynamics within the dataset. The inclusion of the regression line enhances the visualization by highlighting this negative correlation trend.
+
+```{r, echo = TRUE, message = FALSE}
+
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+#new_data <- data %>%
+#  group_by(Annee, DEPARTEMENT) %>%
+#  summarise(avgSurface = mean(SurfaceMoy), Prixm2Moyen = mean(Prixm2Moyen))
+
+#ggplot(new_data, aes(x = avgSurface, y = Prixm2Moyen, color = as.factor(Annee))) +
+# geom_point() +
+# geom_smooth(method = "lm", se = FALSE, size = 0.8) +  # Add regression line
+# facet_wrap(~Annee, scales = "free", ncol = 2) +  # 2 columns in each row
+# labs(title = "Scatter Plot: Prixm2Moyen vs avgSurface",
+#     x = "avgSurface",
+#      y = "Prixm2Moyen",
+#     color = "Year") +
+# theme_minimal()
+
+```
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/scatter_surface.png)
+#### Scatter: Price in terms of Surface by Group
+
+mtn je veux par groupe :
+
+```{r, echo = TRUE}
+# data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+# 
+# new_data <- data %>%
+#   group_by(Annee, DEPARTEMENT, Group) %>%
+#   summarise(avgSurface = mean(SurfaceMoy), Prixm2Moyen = mean(Prixm2Moyen))
+# 
+# library(ggplot2)
+# 
+# # Assuming your data frame is named new_data
+# # Create the scatter plot with regression line for each year and each group
+# plot <- ggplot(new_data, aes(x = avgSurface, y = Prixm2Moyen, color = Group)) +
+#   geom_point() +
+#   geom_smooth(method = "lm", se = FALSE) +  # Add regression line without confidence interval
+#   facet_wrap(~Annee, ncol = 2) +  # Facet by year
+#   labs(title = "Scatter Plot and Regression Lines by Group",
+#        x = "Average Surface",
+#        y = "Prixm2Moyen") +
+#   theme_minimal()+
+#   xlim(85, 115) +  # Set x-axis limits
+#   ylim(800, 3500)  # Set y-axis limits
+# 
+# # Show the plot
+# print(plot)
+
+```
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/scatter_by_group.png)
+
+In this R code, the objective is to conduct a geospatial analysis to visualize and understand the spatial distribution of average real estate prices per square meter across different departments in France from 2014 to 2021. The code involves reading a primary dataset containing relevant real estate information, including the average prices. It then utilizes geographical data in a GeoJSON file outlining the boundaries of French departments. For each year in the range 2014 to 2021, the code filters and aggregates the data, creating thematic maps using **`ggplot2`** and **`sf`**. These maps use color gradients to represent the variation in average prices, with the **`viridis`** package providing a visually appealing color scale. Finally, the maps are saved as PNG images, enabling a comprehensive visual exploration of how real estate prices have evolved across different regions of France over the specified time period.
+
+#### Yearly Real estate average price in France
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(sf)
+library(dplyr)
+library(viridis)
+library(ggplot2)
+
+main <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Main /main.csv")
+
+# Lire le fichier JSON https://www.data.gouv.fr/fr/datasets/carte-des-departements-2-1/
+france <- st_read("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/contour-des-departements.geojson")
+
+# Function to generate map for a specific year
+generate_map <- function(year) {
+  # Filter the data for the given year
+  main_year <- main %>%
+    filter(Annee == year)
+  
+  # Aggregate the data by department for the given year
+  moyenne_prix_year <- main_year %>%
+    group_by(DEPARTEMENT) %>%
+    summarise(moyenne_prix_m2 = mean(Prixm2Moyen))
+  
+  # Merge the aggregated data with the map of France for the given year
+  carte_data_year <- merge(france, moyenne_prix_year, by.x = "code", by.y = "DEPARTEMENT", all.x = TRUE)
+  
+  # Create the map for the given year with ggplot2
+  ggplot(data = carte_data_year) +
+    geom_sf(aes(fill = moyenne_prix_m2), lwd = 0.2, color = "white") +
+    scale_fill_viridis_c(
+      name = "Moyenne\nPrix/m2",
+      option = "magma",
+      na.value = "grey90",
+      direction = -1
+    ) +
+    theme_minimal() +
+    labs(title = paste("Moyenne du Prix au mètre carré par Département en", year))
+}
+
+# Generate maps for the years 2014 to 2021
+for (year in 2014:2021) {
+  map <- generate_map(year)
+}
+```
+
+The script then iterates through the years 2014 to 2021, generating maps for each year and saving them as PNG files. The maps visually represent the average real estate prices per square meter in French departments, with color-coded regions indicating varying price levels. The use of libraries like sf, dplyr, and ggplot2 streamlines spatial data handling and visualization, making the code concise and effective for creating a series of informative maps over multiple years. Additionally, the use of loops and functions enhances code reusability and readability.
+
+::: {.nav-pills}
+::: {.panel-tabset}
+
+## 2014
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2014.png)
+
+## 2015
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2015.png)
+
+## 2016
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2016.png)
+
+## 2017
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2017.png)
+
+## 2018
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2018.png)
+
+## 2019
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2019.png)
+
+## 2020
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2020.png)
+
+## 2021
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/Carte_2014-2021/map_2021.png)
+:::
+:::
+
+ici une petite conclusion locale sur les prix de l'immobilier en france .
+
+## 3.2 Criminality in France
+
+#### Crime rate over the years 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE }
+
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  filter(Year >= 2016 & Year <= 2021)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(Year) %>%
+  summarise(popu = sum(POP), nbcrime = sum(acts))
+
+# Create a new column named 'criminality' as crimes per 1000 population
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+# Create a plot of crime rate over the years
+crime_plot <- ggplot(new_data, aes(x = Year, y = criminality)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Crime Rate Over the Years",
+       x = "Year",
+       y = "Crime Rate per ‰") +
+  theme_minimal()
+
+# Show the plot
+print(crime_plot)
+```
+
+In our real estate project in France, we are examining various socio-demographic factors, including the analysis of crime rates in France from 2016 to 2021. Initially, we hypothesized that higher crime rates might be associated with lower-cost housing. However, upon closer inspection, we observed a correlation indicating that in major cities like Paris, the crime rate tends to increase with population density.
+
+#### Crime rate over the years by group 
+
+Affichage par groupe:
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE }
+
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  filter(Year >= 2016 & Year <= 2021)
+
+new_data <- filtered_data %>%
+  group_by(Year, Group) %>%
+  summarise(popu = sum(POP), nbcrime = sum(acts))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+
+ggplot(new_data, aes(x = Year, y = criminality, color = Group)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Yearly Avg Crime rate by Group",
+       x = "Year",
+       y = "Crime rate",
+       color = "Group") +
+  theme_minimal()
+```
+This observation aligns with the logical expectation that more populated areas are likely to have higher chances of criminal activity. Examining the data on a per-thousand inhabitants basis, we found that less densely populated departments experience lower crime rates. As we move forward, we plan to explore the statistical effects by manipulating our real estate data in France, specifically focusing on property prices, to better understand any potential relationships.
+
+### 3.2.1 Average crime rates
+
+
+#### Interactive map of Crime avg between (2016 and 2021)  
+
+The interactive map illustrates the average crime rates in France from 2016 to 2020, highlighting departments such as Bouches-du-Rhône, Rhône, Seine-Saint-Denis, Paris, Alpes-Maritimes, and Hérault as high-risk areas. Originally, the data included different types of crimes, but a decision was made to consolidate them into the same category, eliminating the distinction between crime types for the purpose of this analysis.
+
+```{r,echo = TRUE, warning = FALSE, message = FALSE}
+library(sf)
+library(viridis)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+
+main <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf.csv")
+
+# Lire le fichier JSON https://www.data.gouv.fr/fr/datasets/carte-des-departements-2-1/
+france <- st_read("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/contour-des-departements.geojson")
+
+# Function to generate an interactive map for the average of all years with txpourmille
+generate_map_avg_txpourmille <- function() {
+  # Calculate the average for each department across all years
+  avg_data <- main %>%
+    group_by(DEPARTEMENT, Libellé) %>%
+    summarise(avg_txpourmille = mean(txpourmille, na.rm = TRUE))
+  
+  # Merge the aggregated data with the map of France
+  carte_data_avg <- merge(france, avg_data, by.x = "code", by.y = "DEPARTEMENT", all.x = TRUE)
+  
+  # Create the map for the average of all years with ggplot2
+  ggplotly(
+    ggplot(data = carte_data_avg) +
+      geom_sf(aes(fill = avg_txpourmille, text = paste(Libellé)), lwd = 0.2, color = "white") +
+      scale_fill_viridis_c(
+        name = "Average Taux pour mille",
+        option = "plasma",
+        na.value = "grey90",
+        direction = -1
+      ) +
+      theme_minimal() +
+      labs(title = "Average Criminality rate in France (2016-2021)", caption = "Source: Your Source Here") +
+      theme(
+        plot.title = element_text(size = 10, hjust = 0.5) # Adjust the title size and position
+      ),
+    width = 850,
+    height = 450
+  )
+}
+
+# Generate and print the interactive map for the average of all years
+map_avg_txpourmille <- generate_map_avg_txpourmille()
+
+map_avg_txpourmille
+```
+
+#### Yearly Average Crime rate per Department 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+library(sf)
+library(dplyr)
+library(viridis)
+library(ggplot2)
+
+main <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYear_vf.csv")
+
+# Lire le fichier JSON https://www.data.gouv.fr/fr/datasets/carte-des-departements-2-1/
+france <- st_read("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/contour-des-departements.geojson")
+
+# Function to generate map for a specific year with txpourmille
+generate_map_txpourmille <- function(year) {
+  # Filter the data for the given year
+  main_year <- main %>%
+    filter(Annee == year)
+  
+  # Aggregate the data by department for the given year using txpourmille
+  moyenne_prix_year <- main_year %>%
+    group_by(DEPARTEMENT) %>%
+    summarise(moyenne_prix_txpourmille = mean(txpourmille))
+  
+  # Merge the aggregated data with the map of France for the given year
+  carte_data_year <- merge(france, moyenne_prix_year, by.x = "code", by.y = "DEPARTEMENT", all.x = TRUE)
+  
+  # Create the map for the given year with ggplot2
+  ggplot(data = carte_data_year) +
+    geom_sf(aes(fill = moyenne_prix_txpourmille), lwd = 0.2, color = "white") +
+    scale_fill_viridis_c(
+      name = "Taux pour mille",
+      option = "plasma",
+      na.value = "grey90",
+      direction = -1
+    ) +
+    theme_minimal() +
+    labs(title = paste("Moyenne du Taux pour mille par Département en", year))
+}
+# Generate maps for the years 2016 to 2020 using txpourmille
+for (year in 2016:2020) {
+  map_txpourmille <- generate_map_txpourmille(year)
+}
+```
+
+::: {.nav-pills}
+::: {.panel-tabset}
+
+## 2016
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_txpourmille_2016.png)
+
+## 2017
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_txpourmille_2017.png)
+
+## 2018
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_txpourmille_2018.png)
+
+## 2019
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_txpourmille_2019.png)
+
+## 2020
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_txpourmille_2020.png)
+
+## 2021
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_txpourmille_2021.png)
+
+:::
+:::
+
+### 3.2.2 Crime vs. Population
+
+In this part our aim was to delve into the intricate relationship between department size, categorized into four distinct population groups and the corresponding criminality rates over the years 2016 to 2021. As we navigate through the visual representation in the bar plot, a clear pattern emerges -- a positive correlation unfolds, indicating that larger departments tend to experience higher rates of criminality. What captures our attention is the consistent downward trend in crime rates across all population groups leading up to 2020, followed by a sudden and uniform increase. This anomaly prompts us, as a collective, to pose questions about potential external influences, particularly considering the tumultuous events of the COVID-19 pandemic. This 2020 spike in crime rates prompts us to collectively examine the intricacies and understand the unique dynamics at play. Our collaborative exploration seeks meaningful insights into the interplay between population dynamics and criminality, unraveling the complexity of societal trends.
+
+#### Criminality rate by year and Population Group
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(ggplot2)
+library(plotly)
+library(dplyr)
+
+# Charger les données
+merged_data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+my_colors <- c('orange', 'pink', 'purple', 'blue')
+
+merged_data <- merged_data %>%
+  filter(Year >= 2016 & Year <= 2021)
+
+# Bar plot pour txpourmille par année et groupe de population avec ggplot2
+ggplot_data <- merged_data %>%
+  group_by(Year, Group) %>%
+  summarize(rate_txpourmille = sum(acts) / sum(POP) * 1000)
+
+ggplot_txpourmille <- ggplot(ggplot_data, aes(x = Year, y = rate_txpourmille, fill = Group)) +
+  scale_fill_manual(values = my_colors) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Criminality rate by year and Population Group",
+       x = "Year",
+       y = "Rate txpourmille",
+       fill = "Population Group") +
+  theme_minimal()
+
+# Convertir le graphique ggplot2 en plotly
+txpourmille_plot <- ggplotly(ggplot_txpourmille, height = 400, width = 700)
+
+txpourmille_plot
+
+```
+
+#### heatmap of crime population ? 
+
+
+
+
+
+### 3.2.3 Criminality's impact on Real estate
+
+en vrai ici je peix faire un scatter avec toute la data que j'ai : plus de donnée 
+
+#### scatter 
+
+la moyenne entre 2016 et 2021 
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(plotly)
+
+# Read the data
+merged_data <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYear_vf.csv")
+
+# Create ggplot
+ggp <- ggplot(merged_data, aes(x = Prixm2Moyen, y = txpourmille, color = POP, text = paste("DEP:", DEPARTEMENT, "\nYear:", Annee))) +
+  scale_color_gradient(low = "blue", high = "green") +
+  geom_point(size = 3) +
+  labs(title = "Comparison between crime rate and M² price (2016-2021)",
+       x = "Average M² Price",
+       y = "Crime rates") +
+  xlim(0, 6000) +   # Set x-axis range
+  ylim(15, 70)   +   # Set y-axis range
+  theme_minimal()
+
+# Convert ggplot to plotly
+p <- ggplotly(ggp, height = 400, width = 700)
+
+# Customize layout if needed
+p
+
+```
+
+::: panel-tabset
+
+#### 2016
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  #filter(Annee >= 2016 & Annee <= 2021)
+  filter(Year == 2016)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT)%>%
+  summarise(popu = sum(POP), nbcrime = sum(acts), price = mean(AvgSQmeter))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+scatter_plot <- ggplot(new_data, aes(x = price, y = criminality)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add linear regression line without confidence interval
+  labs(title = "Scatter Plot of Criminality vs Price with Regression Line",
+       x = "Price",
+       y = "Criminality") +
+  theme_minimal()+
+  xlim(800, 4000) +
+  ylim(15, 80)
+
+# Show the plot
+print(scatter_plot)
+```
+
+#### 2017
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  #filter(Annee >= 2016 & Annee <= 2021)
+  filter(Year == 2017)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT)%>%
+  summarise(popu = sum(POP), nbcrime = sum(acts), price = mean(AvgSQmeter))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+scatter_plot <- ggplot(new_data, aes(x = price, y = criminality)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add linear regression line without confidence interval
+  labs(title = "Scatter Plot of Criminality vs Price with Regression Line",
+       x = "Price",
+       y = "Criminality") +
+  theme_minimal()+
+  xlim(800, 4000) +
+  ylim(15, 80)
+
+# Show the plot
+print(scatter_plot)
+```
+
+#### 2018
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  #filter(Annee >= 2016 & Annee <= 2021)
+  filter(Year == 2018)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT)%>%
+  summarise(popu = sum(POP), nbcrime = sum(acts), price = mean(AvgSQmeter))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+scatter_plot <- ggplot(new_data, aes(x = price, y = criminality)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add linear regression line without confidence interval
+  labs(title = "Scatter Plot of Criminality vs Price with Regression Line",
+       x = "Price",
+       y = "Criminality") +
+  theme_minimal()+
+  xlim(800, 4000) +
+  ylim(15, 80)
+
+# Show the plot
+print(scatter_plot)
+```
+
+#### 2019
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  #filter(Annee >= 2016 & Annee <= 2021)
+  filter(Year == 2019)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT)%>%
+  summarise(popu = sum(POP), nbcrime = sum(acts), price = mean(AvgSQmeter))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+scatter_plot <- ggplot(new_data, aes(x = price, y = criminality)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add linear regression line without confidence interval
+  labs(title = "Scatter Plot of Criminality vs Price with Regression Line",
+       x = "Price",
+       y = "Criminality") +
+  theme_minimal()+
+  xlim(800, 4000) +
+  ylim(15, 80)
+
+# Show the plot
+print(scatter_plot)
+```
+
+#### 2020
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  #filter(Annee >= 2016 & Annee <= 2021)
+  filter(Year == 2020)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT)%>%
+  summarise(popu = sum(POP), nbcrime = sum(acts), price = mean(AvgSQmeter))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+scatter_plot <- ggplot(new_data, aes(x = price, y = criminality)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add linear regression line without confidence interval
+  labs(title = "Scatter Plot of Criminality vs Price with Regression Line",
+       x = "Price",
+       y = "Criminality") +
+  theme_minimal()+
+  xlim(800, 4000) +
+  ylim(15, 80)
+
+# Show the plot
+print(scatter_plot)
+```
+
+#### 2021
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  #filter(Annee >= 2016 & Annee <= 2021)
+  filter(Year == 2021)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT)%>%
+  summarise(popu = sum(POP), nbcrime = sum(acts), price = mean(AvgSQmeter))
+
+new_data <- new_data %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+scatter_plot <- ggplot(new_data, aes(x = price, y = criminality)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add linear regression line without confidence interval
+  labs(title = "Scatter Plot of Criminality vs Price with Regression Line",
+       x = "Price",
+       y = "Criminality") +
+  theme_minimal()+
+  xlim(800, 4000) +
+  ylim(15, 80)
+
+# Show the plot
+print(scatter_plot)
+```
+:::
+
+#### heartmap of crime price ? 
+
+
+
+ici je lache une heatmap de Crime vs prix 
+
+```{r, echo = TRUE}
+
+# Read data
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf4.csv")
+
+# Filter and aggregate data
+df <- data %>%
+  filter(Year >= 2016 & Year <= 2021) %>%
+  group_by(Year, Group) %>%
+  summarise(popu = sum(POP), nbcrime = sum(acts)) %>%
+  mutate(criminality = nbcrime / popu * 1000)
+
+# Create ggplot heatmap
+gg_heatmap <- ggplot(df, aes(x = Year, y = Group, fill = criminality)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = brewer.pal(9, "Blues"), name = "Criminality") +
+  labs(title = "Criminality Heatmap", x = "Year", y = "Group") +
+  theme_minimal()
+
+# Convert ggplot to Plotly
+heatmap_plot <- ggplotly(gg_heatmap, height = 400, width = 700)
+
+# Display the plot
+heatmap_plot
+```
+
+
+
+## 3.3 Population
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+
+PrixPopCrimeYearChomInt_vf <- read_csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomInt_vf.csv")
+
+library(ggplot2)
+library(scales)
+
+# Sum the population per year
+population_sum <- PrixPopCrimeYearChomInt_vf %>%
+  group_by(Annee) %>%
+  summarize(TotalPopulation = sum(POP))
+
+# Plotting the graph
+ggplot(population_sum, aes(x = Annee, y = TotalPopulation)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Population per Year",
+       x = "Year",
+       y = "Total Population (in millions)") +
+  scale_y_continuous(labels = scales::comma_format(scale = 1e-6))
+```
+
+In our analysis, we've explored the relationship between square meter prices (**`Prixm2Moyen`**), years (**`Annee`**), and population categories in various departments. Through the creation of a bar plot, we've effectively visualized the mean square meter prices over time, distinguishing between different population groups represented by the **`Population_Group`** variable.
+
+As we collectively interpret the plot, a striking pattern emerges. Departments with larger populations exhibit a clear upward trajectory in square meter prices over the years. This collective trend suggests a noteworthy increase in real estate values in more densely populated areas. Conversely, for departments with smaller populations, the plot indicates a relatively stable square meter price trend.
+
+The observed rise in square meter prices in densely populated areas suggests increased demand, urbanization, or economic factors driving real estate appreciation. This insight deepens our understanding of regional real estate variations, prompting collaborative discussions on influencing factors and implications for future analyses.
+
+### 3.3.1 Population density
+
+ici c'est le code de comment j'ai generé les carte en png blabla
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+
+library(sf)
+library(dplyr)
+library(viridis)
+library(ggplot2)
+
+main <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf.csv")
+
+#france <- st_read("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/contour-des-departements.geojson")
+
+france <- main
+
+# Function to generate map for a specific year
+generate_map <- function(year, variable) {
+  # Filter the data for the given year
+  main_year <- main %>%
+    filter(Annee == year)
+  
+  # Aggregate the data by department for the given year
+  variable_year <- main_year %>%
+    group_by(DEPARTEMENT) %>%
+    summarise(variable_value = sum({{variable}}))
+  
+  # Merge the aggregated data with the map of France for the given year
+  carte_data_year <- merge(france, variable_year, by.x = "code", by.y = "DEPARTEMENT", all.x = TRUE)
+  
+  # Create the map for the given year with ggplot2
+  ggplot(data = carte_data_year) +
+    geom_sf(aes(fill = variable_value), lwd = 0.2, color = "white") +
+    scale_fill_viridis_c(
+      name = paste("Total ", deparse(substitute(variable)), "\n", sep = ""),
+      option = "mako",
+      na.value = "grey90",
+      direction = -1
+    ) +
+    theme_minimal() +
+    labs(title = paste("Total ", deparse(substitute(variable)), " per Département in", year))
+
+
+# Generate maps for the years 2014 to 2021 for population (POP)
+#for (year in 2014:2021) {
+ # map <- generate_map(year, POP)
+  #print(map)
+  
+  # Directory where you want to save the maps
+#  output_directory <- "/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/"
+  
+  # Save the map to the specified directory
+ # ggsave(file.path(output_directory, paste("map_POP_", year, ".png", sep = "")), plot = map, width = 10, height = 8)
+}
+
+```
+
+
+#### Yearly average population density 
+
+::: {.nav-pills}
+::: {.panel-tabset}
+
+## 2014
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2014.png)
+
+## 2015
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2015.png)
+
+## 2017
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2017.png)
+
+## 2018
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2018.png)
+
+## 2019
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2019.png)
+
+## 2020
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2020.png)
+
+## 2021
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/report/map_POP_2021.png)
+:::
+:::
+
+
+
+
+### 3.3.2 Real estate in terms of Population
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(ggplot2)
+library(plotly)
+library(dplyr)
+
+# Charger les données
+merged_data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+my_colors <- c('green', 'yellow', 'orange', 'blue')
+
+merged_data <- merged_data %>%
+  filter(Year >= 2016 & Year <= 2021)
+
+# Bar plot pour txpourmille par année et groupe de population avec ggplot2
+ggplot_data <- merged_data %>%
+  group_by(Year, Group) %>%
+  summarize(priceSQmeter = mean(AvgSQmeter))
+
+ggplot_txpourmille <- ggplot(ggplot_data, aes(x = Year, y = priceSQmeter, fill = Group)) +
+  scale_fill_manual(values = my_colors) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Price/m2 by year and Population Group",
+       x = "Year",
+       y = "Price/m2",
+       fill = "Population Group") +
+  theme_minimal()
+
+# Convertir le graphique ggplot2 en plotly
+leprix <- ggplotly(ggplot_txpourmille, height = 400, width = 700)
+
+leprix
+
+```
+
+
+## 3.4 Unemployment rate 
+
+#### taux de choyage en moyenne en france 
+
+```{r, echo = TRUE , message = FALSE, warning = FALSE}
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  filter(Year >= 2014 & Year <= 2021)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(Year) %>%
+  summarise(UnemploymentRate = mean(Unemployment))
+
+# Create a plot of crime rate over the years
+chomage <- ggplot(new_data, aes(x = Year, y = UnemploymentRate)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Unemployment Over the Years",
+       x = "Year",
+       y = "Unemployment in %") +
+  theme_minimal()
+
+# Show the plot
+print(chomage)
+```
+
+
+#### Pareil mais par groupe :
+
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+ata <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+filtered_data <- data %>%
+  filter(Year >= 2014 & Year <= 2021)
+
+new_data <- filtered_data %>%
+  group_by(Year, Group) %>%
+  summarise(UnemploymentRate = mean(Unemployment))
+
+
+ggplot(new_data, aes(x = Year, y = UnemploymentRate, color = Group)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Yearly Unemployment rate by Group",
+       x = "Year",
+       y = "Unemployment Rate",
+       color = "Group") +
+  theme_minimal()
+```
+
+#### chomage par groupe blabla en bpxpolot
+```{r, echo = TRUE, message = FALSE}
+merged_data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+my_colors <- c('#336600', '#cccc00', '#ffcc66', '#eeccff')
+
+merged_data <- merged_data %>%
+  filter(Year >= 2014 & Year <= 2021)
+
+# Bar plot pour txpourmille par année et groupe de population avec ggplot2
+ggplot_data <- merged_data %>%
+  group_by(Year, Group) %>%
+  summarize(UnemploymentRate = mean(Unemployment))
+
+ggplot_chomage <- ggplot(ggplot_data, aes(x = Year, y = UnemploymentRate, fill = Group)) +
+  scale_fill_manual(values = my_colors) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Unemployment rate by year and Population Group",
+       x = "Year",
+       y = "Unemployment rate",
+       fill = "Population Group") +
+  theme_minimal()
+
+# Convertir le graphique ggplot2 en plotly
+txpourmille_plot <- ggplotly(ggplot_chomage, height = 400, width = 700) %>%
+  layout(yaxis = list(range = c(6, 10.5)))
+
+txpourmille_plot
+```
+
+
+#### chomage moyen de la france par annee
+
+```{r, echo= TRUE}
+
+# CARTE
+
+# Load required libraries
+# library(sf)                   # For working with spatial data
+# library(dplyr)                # For data manipulation
+# library(viridis)              # For color scales
+# library(ggplot2)              # For plotting
+
+# Read the main dataset
+# main <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+# Read the map of France from a GeoJSON file
+# france <- st_read("/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/contour-des-departements.geojson")
+
+# Function to generate a map for a specific year
+# generate_map <- function(year) {
+#   # Filter the data for the given year
+#   main_year <- main %>%
+#     filter(Year == year)
+  
+#   # Aggregate the data by department for the given year
+#   moyenne_chomage_year <- main_year %>%
+#     group_by(DEPARTEMENT) %>%
+#     summarise(moyenne_chomage = mean(Unemployment))
+  
+#   # Merge the aggregated data with the map of France for the given year
+#   carte_chomage_year <- merge(france, moyenne_chomage_year, by.x = "code", by.y = "DEPARTEMENT", all.x = TRUE)
+  
+#   # Create the map for the given year with ggplot2
+#   ggplot(data = carte_chomage_year) +
+#     geom_sf(aes(fill = moyenne_chomage), lwd = 0.2, color = "white") +
+#     scale_fill_viridis_c(
+#       name = "Unemployment rate in %",
+#       option = "magma",
+#       na.value = "grey90",
+#       direction = -1
+#     ) +
+#     theme_minimal() +
+#     labs(title = paste("Unemployment rate in", year))
+# }
+
+# Generate maps for the years 2014 to 2021
+# for (year in 2014:2021) {
+#   # Generate map for the current year
+#   map <- generate_map(year)
+  
+#   # Print the map
+#   print(map)
+  
+#   # Directory where you want to save the maps
+#   output_directory <- "/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie"
+  
+#   # Save the map to the specified directory
+#   ggsave(file.path(output_directory, paste("map_", year, ".png", sep = "")), plot = map, width = 10, height = 8)
+# }
+# 
+
+```
+
+
+::: {.nav-pills}
+::: {.panel-tabset}
+
+## 2014
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2014.png)
+
+## 2015
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2015.png)
+
+## 2016
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2016.png)
+
+## 2017
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2017.png)
+
+## 2018
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2018.png)
+
+## 2019
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2019.png)
+
+## 2020
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2020.png)
+
+## 2021
+
+![](/Users/victorregly/MyDoc/University/Master/Management/DATA/Dataset/Cartographie/map_2021.png)
+
+:::
+:::
+
+#### scatter prix en fonction du chomage
+
+```{r}
+# Read the data
+data <- read_delim("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf3.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+merged_data <- data %>%
+  group_by(DEPARTEMENT) %>%
+  summarise(PriceSQmeter = mean(AvgSQmeter), UnemploymentRate = mean(Unemployment),POP = mean(POP))
+
+# Create ggplot
+ggp <- ggplot(merged_data, aes(x = PriceSQmeter, y = UnemploymentRate, color = POP, text = paste("DEP:", DEPARTEMENT))) +
+  scale_color_gradient(low = "blue", high = "green") +
+  geom_point(size = 3) +
+  labs(title = "Comparison between Unemployment rate and M² price (2014-2021)",
+       x = "Average M² Price",
+       y = "Unemployment rate") +
+  theme_minimal()
+
+# Convert ggplot to plotly
+p <- ggplotly(ggp, height = 400, width = 700)
+
+# Customize layout if needed
+p
+```
+
+
+#### heatmap du chomage 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+# Read data
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf4.csv")
+
+# Filter and aggregate data
+df <- data %>%
+  filter(Year >= 2016 & Year <= 2021) %>%
+  group_by(Year, Group) %>%
+  summarise(UnemploymentRate = mean(Unemployment))
+
+# Create ggplot heatmap
+gg_heatmap <- ggplot(df, aes(x = Year, y = Group, fill = UnemploymentRate)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = brewer.pal(9, "Purples"), name = "UnemploymentRate") +
+  labs(title = "UnemploymentRate Heatmap", x = "Year", y = "Group") +
+  theme_minimal()
+
+# Convert ggplot to Plotly
+heatmap_plot <- ggplotly(gg_heatmap, height = 400, width = 700)
+
+# Display the plot
+heatmap_plot
+```
+
+
+## 3.5 Inflation, Interest Rate & PIB 
+
+this part some econimical factor blabla et la tu developpes tu brodes 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, out.width='100%'}
+library(ggplot2)
+
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf4.csv")
+
+filtered_data <- data %>%
+  filter(Year >= 2014 & Year <= 2021)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(Year) %>%
+  summarise(InterestRate = mean(interest_rate), Inflation = mean(tx_inflation), PIB = mean(PIB))
+
+# Create a plot of interest rate and inflation over the years with lines and points
+interet <- ggplot(new_data, aes(x = Year)) +
+  geom_line(aes(y = InterestRate, color = "Interest Rate"), linetype = "solid") +
+  geom_point(aes(y = InterestRate, color = "Interest Rate")) +
+  
+  geom_line(aes(y = Inflation, color = "Inflation"), linetype = "dashed") +
+  geom_point(aes(y = Inflation, color = "Inflation")) +
+  
+  geom_line(aes(y = PIB, color = "PIB"), linetype = "solid") +
+  geom_point(aes(y = PIB, color = "PIB")) +
+  
+  geom_bar(aes(x = Year, y = Inflation), stat = "identity", fill = "orange", alpha = 0.5) +
+  geom_bar(aes(x = Year, y = InterestRate), stat = "identity", fill = "blue", alpha = 0.5) +
+  geom_bar(aes(x = Year, y = PIB), stat = "identity", fill = "black", alpha = 0.5) +
+  
+  labs(title = "Interest Rate and Inflation Over the Years",
+       x = "Year",
+       y = "Value") +
+  theme_minimal() +
+  scale_color_manual(values = c("Interest Rate" = "blue", "Inflation" = "orange", "PIB" = "black"), 
+                     name = "Legend Title")
+
+# Show the plot
+print(interet)
+```
+
+## 3.7 Gang bang des donnees 
+
+#### panel jsp quoi 
+
+bref la pareil tu peux dire que pour visualiser les tendances nous avons realsie un panel jsp quoi 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, out.width='80%'}
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf4.csv")
+
+filtered_data <- data %>%
+  filter(Year >= 2014 & Year <= 2021)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(Year) %>%
+  summarise(pop = sum(POP), sales = sum(Nb_sales), price =  mean(AvgSQmeter),surface = mean(Surface), crime = mean(criminality), chomage = mean(Unemployment),
+           interest =  mean(interest_rate), inflation = mean(tx_inflation), PIB = mean(PIB) )
+
+# Assuming your dataset is named 'new_data'
+
+# Melt the data to long format
+new_data_long <- new_data %>%
+  gather(variable, value, -Year)
+
+# Create a facet plot for each variable
+facet_plot <- ggplot(new_data_long, aes(x = Year, y = value, color = variable)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~variable, scales = "free_y") +
+  labs(title = "Multiple Variables by Year",
+       x = "Year",
+       y = "Value") +
+  theme_minimal()
+
+# Show the plot
+print(facet_plot)
+```
+
+
+#### correlation
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE, out.width='100%'}
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/PrixPopCrimeYearChomIntInf_vf4.csv")
+
+filtered_data <- data %>%
+  filter(Year >= 2016 & Year <= 2021)
+
+# Group data by year and calculate population and total number of crimes
+new_data <- filtered_data %>%
+  group_by(DEPARTEMENT) %>%
+  summarise(pop = mean(POP), sales = mean(Nb_sales), price =  mean(AvgSQmeter),surface = mean(Surface), criminality = mean(criminality), chomage = mean(Unemployment),
+            interest =  mean(interest_rate), inflation = mean(tx_inflation),  PIB = mean(PIB))
+
+
+cor_vars <- select_if(new_data, is.numeric)
+
+# Calculate the correlation matrix
+cor_matrix <- cor(cor_vars)
+
+# Plot the correlation matrix using corrplot
+corrplot(cor_matrix, method = "color", type = "upper", tl.cex = 0.8, tl.col = "black")
+```
+

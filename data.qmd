@@ -1,0 +1,400 @@
+
+
+# 2.Data
+
+```{r, echo = FALSE, message = FALSE}
+source(here::here("scripts/setup.R"))
+```
+
+## 2.1 Raw Data-sets
+
+### 2.1.1 Real estate Prices in France Data Set
+
+The dataset compiles aggregated variables related to the residential real estate market at the municipal level for each year from 2014 to 2021. It includes data such as the number of property transactions, the number of house and apartment sales, average property sale prices, average price per square meter, and average property size. The identification and join field for municipalities are based on the INSEE code (COG 2022).
+
+```{r, echo = TRUE}
+  # Create a data frame with your column names
+  data <- data.frame(
+    variable = c("X", "INSEE_COM", "Annee", "Nb_mutations", "NbMaisons", "NbApparts", "PrixMoyen", "Prixm2Moyen", "SurfaceMoy"),
+    Explication = c("Index", "INSEE code of the commune", "Year of observation", "Number of mutations", "Number of houses", "Number of apartments", "Average price", "Average price per square meter", "Average surface area")
+  )
+
+  # Display the table using kableExtra
+  data %>%
+    kable(col.names = c("Column Names", "Explanation"), align = c("l","l"), caption = "Real estate prices in France 2014-2021") %>%
+    kable_styling(full_width = TRUE) %>%
+    column_spec(1, bold = TRUE)
+```
+
+Source: \[[Data Gouvernment Français](https://explore.data.gouv.fr/?url=https%3A%2F%2Fwww.data.gouv.fr%2Ffr%2Fdatasets%2Fr%2Fd25b44f2-f119-4688-8e85-cf5e7afafa09)\]
+
+### 2.1.2 Population Data for French Municipalities
+
+This database provides population data from 1876 to 2020 for mainland French municipalities, from 1936 to 2020 for Corsican municipalities, and from 1954 or 1962 to 2020 for municipalities in the French Overseas Departments (excluding Mayotte). It will be used as an instrumental variable.
+
+```{r}
+
+# Create a data frame with your column names
+data <- data.frame(
+  variable = c("CODGEO", "REG", "DEP", "LIBGEO", "PMUN20", "PMUN19", "PMUN18", "PMUN17", "PMUN16", "PMUN15", "PMUN14"),
+  Explication = c("Geographical code", "Region", "Department", "Geographical name", "Population in 2020", "Population in 2019", "Population in 2018", "Population in 2017", "Population in 2016", "Population in 2015", "Population in 2014")
+)
+
+# Display the table using kableExtra
+data %>%
+  kable(col.names = c("Column Names", "Explanation"), align = c("l","l"), caption = "Population Data for French Municipalities") %>%
+  kable_styling(full_width = TRUE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+Source: \[[INSEE](https://www.insee.fr/fr/statistiques/3698339)\]
+
+### 2.1.3 Unemployment rate Dataset
+
+This dataset contains the unemployment rate in France per department per year.
+
+```{r, echo = TRUE}
+
+# Assuming "path_to_your_file.xlsx" is the correct path to your Excel file
+aba <- read_excel("~/MyDoc/University/Master/Management/DATA/sl_etc_2023T2.xls", 
+                  sheet = "Département", skip = 2)
+
+# Select the first six column names and create a data frame with explanations
+aba_col_names <- colnames(aba)[1:10]
+aba_data <- data.frame(
+  variable = aba_col_names,
+  Explication = c(
+    "Department Code", 
+    "Department Label", 
+    rep("Unemployment Rate in %", length(aba_col_names) - 2)
+  )
+)
+
+# Display the table using kableExtra
+aba_data %>%
+  kable(col.names = c("Column Names", "Explanation"), align = c("l","l"), caption = "Unemployment rate in % by Department & Year") %>%
+  kable_styling(full_width = TRUE) %>%
+  column_spec(1, bold = TRUE)
+
+
+```
+
+Source: \[[INSEE](https://www.insee.fr/fr/statistiques/2012804#tableau-TCRD_025_tab1_departements)\]
+
+### 2.1.4 Interest Rate Data
+
+Analyzing interest rate data is crucial for your real estate project in France, as it directly influences mortgage affordability and, consequently, demand for properties. Understanding this correlation is key to predicting and explaining fluctuations in real estate prices.
+
+```{r, echo = TRUE}
+
+# Create a data frame with your column names
+data <- data.frame(
+  variable = c("Pays", "France", "Zone euro à 19", "Royaume-Uni", "États-Unis", "Japon"),
+  Explication = c("Country", "France", "Euro Zone (19 countries)", "United Kingdom", "United States", "Japan")
+)
+
+# Display the table using kableExtra
+data %>%
+  kable(col.names = c("Column Names", "Explanation"), align = c("l","l"), caption = "Column Names and Long-Term Interest Rates by Country") %>%
+  kable_styling(full_width = TRUE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+Source: \[[INSEE](https://www.insee.fr/fr/statistiques/2130712#graphique-figure1_radio1)\]
+
+### 2.1.5 Consumer Price Index (CPI) Data
+
+Incorporating CPI (Consumer Price Index) data is vital for your French real estate project as it reflects changes in the cost of living. Fluctuations in CPI impact purchasing power and housing demand, making it essential for understanding how inflation influences real estate prices.
+
+```{r, echo = TRUE}
+
+tibble(Variables = c("Date", "IPC in %"), Explanation = c("in Year", "IPC in percentage"))%>%
+  kbl() %>%
+  kable_styling(position = "center")%>%
+  column_spec(1, bold = TRUE)
+```
+
+Source: \[[INSEE](https://www.insee.fr/fr/statistiques/serie/010576185#Telechargement)\]
+
+### 2.1.6 Criminality Data
+
+Selecting a dataset on criminality in France by department and year, categorized by types of violence, is a strategic choice for its potential impact on real estate prices. Crime rates are a significant socio-economic factor influencing the desirability and perceived safety of a region, directly affecting the real estate market. High crime rates can deter potential buyers and investors, leading to decreased demand and subsequently lower property values. Conversely, areas with low crime rates may experience increased demand and higher property values. By integrating crime data into the analysis of real estate prices, one can uncover nuanced patterns and correlations between safety perceptions and housing market dynamics. This holistic approach allows for a more comprehensive understanding of the multifaceted factors shaping real estate values, facilitating informed decision-making for both buyers and investors in the French real estate market.
+
+```{r, echo = TRUE}
+# Load the necessary libraries
+
+donnee_dep_data_gouv_2022_geographie2023_produit_le2023_07_17 <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/donnee-dep-data.gouv-2022-geographie2023-produit-le2023-07-17.csv", sep=";")
+
+# Your column names
+column_names <- colnames(donnee_dep_data_gouv_2022_geographie2023_produit_le2023_07_17)
+
+# Create a data frame with column names
+data_colnames <- data.frame(
+  variable = column_names,
+  Explication = c("Type of violence", "Year", "Department Code", "Region Code", "Unit of Account", "Population year", 
+                  "LOG", "Number of Violence", "Population", "Number of Houses", "Rate violence per Thousand")
+)
+
+# Display the table using kableExtra
+data_colnames %>%
+  kable(col.names = c("Column Names", "Explanation"), align = c("l","l"), caption = "Column Names for Your Dataframe") %>%
+  kable_styling(full_width = TRUE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+### 2.1.7 PIB 
+
+explication de ce que c'est le pib despi 
+
+```{r}
+tibble(Variables = c("Annee", "IPC in %"), Explanation = c("Year", "IPC in percentage"))%>%
+  kbl() %>%
+  kable_styling(position = "center")%>%
+  column_spec(1, bold = TRUE)
+```
+
+
+
+## 2.2 Data Wrangling
+
+### 2.2.1 Real estate Prices in France Data Set
+
+#### Merge Data
+
+In this R script, we're merging data from multiple CSV files (2014 to 2021) using the **`dplyr`** library. First, we set our working directory. Then, we read each year's data into separate data frames. We create a list of file names and use **`lapply`** to read and combine these files into a single data frame using **`bind_rows()`**. We save the merged data as "merged_data.csv" in our working directory. This helps us efficiently consolidate information from different years into one dataset for easier analysis and visualization.
+
+#### NA's
+
+The second part of cleaning the data is counting the number of missing values (NAs) in each column of the "merged_data" dataframe and creating a bar plot to visualize these counts. The x-axis of the plot represents column names, while the y-axis shows the number of NAs. Additionally, there's a conditional check to remove rows containing NAs if the variable **`na_check`** is true.
+
+```{r, echo = TRUE}
+# Load your data
+merged_data <- read.csv("~/MyDoc/University/Master/Management/DATA/Dataset/Main /Database work/merged_data.csv")
+
+# Count the number of NA values per column
+na_counts <- colSums(is.na(merged_data))
+
+# Create a bar plot
+barplot(
+  na_counts,
+  names.arg = names(na_counts),
+  main = "Number of NA's per Column",
+  xlab = "",
+  ylab = "# of NA's",
+  col = "skyblue",
+  border = "black",        # Add black borders to the bars
+  las = 2,                 # Rotate column names vertically for better readability
+  cex.names = 0.7,         # Reduce the size of column names
+  ylim = c(0, max(na_counts) * 1.2),  # Set y-axis limits for better scaling
+  space = 0.4              # Adjust space between bars
+)
+```
+
+### 2.2.2 Population data cleaning
+
+This R code about population reads data from an Excel file and writes it to a CSV file. It converts "base-pop-historiques-1876-2020.xlsx" to "population.csv," using the 'readxl' package for Excel and 'write.csv' function for CSV.
+
+```{r, echo = TRUE}
+
+# Load the data
+file_path <- "~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/population.csv"
+data <- read.csv(file_path, header = FALSE)
+
+
+# Set the column names to the values in the 5th line
+colnames(data) <- data[6, ]
+
+# Drop lines with index 1, 2, 3, 4
+data <- data[-c(1, 2, 3, 4, 5,6), ]
+
+# Sélectionner uniquement les colonnes spécifiées   
+cols_to_keep <- c("CODGEO", "REG", "DEP", "LIBGEO", "PMUN20", "PMUN19", "PMUN18", "PMUN17", "PMUN16", "PMUN15", "PMUN14")
+
+data <- data[, cols_to_keep]
+
+# Write the modified data to a new CSV file
+write.csv(data, file = "~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/population1.csv", row.names = FALSE)
+
+kable(head(data), format = "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1:ncol(data), bold = FALSE)
+```
+
+```{r, echo= TRUE, warning=FALSE}
+
+# Spécifier le chemin du fichier Excel
+chemin_excel <- "~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/base-pop-historiques-1876-2020.xlsx"
+
+# Lire le fichier Excel
+data_pop <- read_excel(chemin_excel)
+```
+
+In the second part, the code reads "population1.csv" and transforms it by using the 'gather' function to convert columns representing years into rows, creating '**Annee**' for the year and '**Population**' for the corresponding count. The '*mutate*' function replaces values in the '**Annee**' column with the corresponding years. The final long-format dataset is saved as "population2.csv," providing a cleaned and transformed version of the original data for further analysis.
+
+```{r, echo= TRUE, warning=FALSE}
+library(tidyr)
+library(dplyr)
+
+#Charger la base de données
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/population1.csv")
+
+# Transformer les colonnes d'années en lignes avec une nouvelle colonne 'Annee'
+data_long <- gather(data, key = "Annee", value = "Population", PMUN20:PMUN14)
+
+# Remplacer les valeurs dans la colonne 'Annee'
+data_long <- mutate(data_long, Annee = ifelse(Annee == "PMUN20", 2020,
+                                              ifelse(Annee == "PMUN19", 2019,
+                                                     ifelse(Annee == "PMUN18", 2018,
+                                                            ifelse(Annee == "PMUN17", 2017,
+                                                                   ifelse(Annee == "PMUN16", 2016,
+                                                                          ifelse(Annee == "PMUN15", 2015, 2014)))))))
+
+# Écrire le nouveau fichier si nécessaire
+#write.csv(data_long, file = "~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/population2.csv", row.names = FALSE)
+```
+
+```{r, echo = TRUE}
+# Load the dataset
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/population2.csv")
+
+# Filter data where Population is greater than 10000
+filtered_data <- data %>%
+  filter(Population > 200000)
+
+# Sample 10 random rows
+random_subset <- filtered_data %>%
+  slice_sample(n = 10, replace = FALSE) %>%
+  arrange(desc(Population)) %>%
+  distinct(LIBGEO, .keep_all = TRUE)
+
+data <- random_subset
+
+kable(head(data), format = "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1:ncol(data), bold = FALSE)
+```
+
+Here is the refined table, featuring cities with populations exceeding 200,000 inhabitants. Additionally, it eliminates duplicate entries, ensuring a distinct representation of cities within the specified timeframe of 1876 to 2020. This presentation aims to provide clarity and coherence for the reader by showcasing unique values associated with well-known cities.
+
+Additional attention will be given to data cleaning, particularly during the Exploratory Data Analysis (EDA) phase. This is crucial because certain extreme values, such as a population equal to 0, lack meaningful interpretation and need to be addressed.
+
+```{r, echo = TRUE}
+# Load the dataset
+data <- read.csv("~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Population/population2.csv")
+
+# Summary for the "Population" column
+pop_summary <- summary(data$Population)
+
+# Create a data frame for the summary
+summary_table <- data.frame(
+  Statistic = c("Min.", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."),
+  Value = as.numeric(pop_summary)
+)
+
+# Display the table using kableExtra for improved formatting
+summary_table %>%
+  kbl() %>%
+  kable_styling(
+    full_width = FALSE,
+    position = "left",
+    latex_options = "scale_down"
+  ) %>%
+  column_spec(1, bold = TRUE)
+```
+
+### 2.2.3 Unemployment Rate Data
+
+The dataset, sourced from INSEE, provides insights into unemployment statistics by department from 1982 to 2023. After importing the data using the **`read_excel`** function, the cleaning process involves removing columns marked with "T2," "T3," or "T4" labels using the **`grep`** function and eliminating the "T1\_" prefix from column names using the **`sub`** function. Subsequently, the data undergoes transformation using the **`pivot_longer`** function from the **`tidyverse`** package, reorganizing it into a more accessible format with distinct columns for years and corresponding unemployment values. Further refinement includes filtering out rows where department codes exceed two characters using the **`filter`** function and removing any remaining missing values using the **`na.omit`** function. The resultant polished dataset is then meticulously saved in CSV format using the **`write.csv`** function, ready for precise academic analysis.
+
+```{r, echo = TRUE}
+
+data <- read_excel("~/MyDoc/University/Master/Management/DATA/sl_etc_2023T2.xls", 
+                            sheet = "Département", skip = 2)
+
+# Identifier les colonnes à supprimer
+columns_to_remove <- grep("T2|T3|T4", names(data))
+
+# Supprimer les colonnes identifiées
+data <- data[, -columns_to_remove]
+
+names(data) <- sub("^T1_", "", names(data))
+
+
+data_long <- data %>%
+  pivot_longer(cols = -c("Code", "Libellé"), 
+               names_to = "Annee", 
+               values_to = "Valeur")
+
+data_filtered <- data_long %>%
+  filter(nchar(Code) <= 2)
+
+data_no_na <- na.omit(data_filtered)
+
+
+write.csv(data_no_na,"~/MyDoc/University/Master/Management/DATA/FINAL_WORK/DSFBA/dataset_vf/chomage_vf.csv", row.names = FALSE )
+
+
+#https://www.insee.fr/fr/statistiques/2012804#tableau-TCRD_025_tab1_departements
+```
+
+The unemployment rate dataset per department and year is essential for gauging the economic health of regions in France. It helps uncover correlations between employment conditions and real estate dynamics, guiding strategic decisions in the housing market, including risk assessment and investment opportunities.
+
+### 2.2.4 Interest Rate Data Cleaning
+
+No significant cleaning is required for this dataset, as it is already exceptionally clean. Some additional countries are mentioned in the data, and we may choose to retain them for comparison in the analysis.
+
+```{r, echo=TRUE }
+
+# Spécifier le chemin du fichier Excel
+chemin_excel <- "~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Taux interet/interest rate.xlsx"
+
+# Lire le fichier Excel
+data_pop <- read_excel(chemin_excel)
+
+# Spécifier le chemin du fichier CSV
+chemin_csv <- "~/MyDoc/University/Master/Management/DATA/Dataset/Instrumental /Taux interet/interest_rate.csv"
+
+# Écrire le fichier CSV
+write.csv(data_pop, chemin_csv, row.names = FALSE)
+```
+
+### 2.2.5 Consumer Price Index (CPI) Data
+
+The Consumer Price Index (CPI) dataset for France provides a comprehensive overview of the country's inflationary trends over time. This information is pivotal for evaluating changes in the cost of living at the national level, directly impacting purchasing power and influencing economic conditions. In the context of real estate, analyzing CPI data allows for insights into the broader economic landscape, aiding in understanding trends that may affect property values, affordability, and investment decisions nationwide.\
+\
+No special operations are done on this dataset, except transforming it from excel to csv.
+
+### 2.2.6 Criminality and Population Data
+
+We are working with a dataset that provides information on the criminality rate per department in France. Our objective is to investigate whether there is a correlation between crime rates and real estate prices in the country over the years. To prepare the dataset for this analysis, we perform several operations.
+
+Firstly, we load the necessary 'dplyr' package, an essential tool for data manipulation in R. Next, we read the dataset from a CSV file. To streamline our analysis, we identify and drop unnecessary columns that won't contribute to our investigation, such as 'classe', 'Code.région', and others.
+
+We then proceed to aggregate the data, grouping it by year and department using the 'group_by' and 'summarise' functions from 'dplyr'. This step helps us consolidate the information, summing up the 'faits' (crime incidents) and calculating the average 'POP' (population) for each department.
+
+In order to calculate crime rates per thousand people ('txpourmille'), we create a new variable by dividing the sum of incidents by the average population and multiplying by 1000. To ensure consistency in our analysis, we make some adjustments to the format of the data. We append '20' to the 'annee' variable, pad the 'Code.département' to a width of 2, and filter out rows where the department code length is not equal to 2.
+
+These operations collectively prepare the dataset for a comprehensive analysis of the relationship between crime rates and real estate prices in France over the years, allowing us to explore correlations and draw meaningful insights from the data.
+
+```{r, echo = TRUE, message = TRUE}
+data <- read.csv("/Users/victorregly/MyDoc/University/Master/Management/DATA/donnee-dep-data.gouv-2022-geographie2023-produit-le2023-07-17.csv", sep =";")
+
+columns_to_drop <- c("classe", "Code.région", "unité.de.compte", "millPOP", "millLOG", "LOG", "tauxpourmille")
+data <- data[, !(colnames(data) %in% columns_to_drop)]
+
+# Assuming 'faits' and 'POP' columns are numeric
+data <- data %>%
+  group_by(annee, Code.département) %>%
+  summarise(faits = sum(faits), POP = mean(POP, na.rm = TRUE))
+
+data$txpourmille <- (data$faits / data$POP) * 1000
+
+data$annee <- paste0("20", data$annee)
+
+data$Code.département <- stringr::str_pad(data$Code.département, width = 2, side = "left", pad = "0")
+
+# Keep only rows where the length of Code.département is 2
+data <- data[nchar(data$Code.département) == 2, ]
+```
+
+### 

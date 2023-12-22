@@ -1,0 +1,12 @@
+name: report
+title: report
+username: victorregly
+account: victorregly
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 10803119
+bundleId: 8051843
+url: https://victorregly.shinyapps.io/report/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

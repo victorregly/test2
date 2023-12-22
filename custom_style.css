@@ -1,0 +1,14 @@
+/* Style for the table of contents (TOC) on the left */
+.toc {
+  position: fixed;
+  left: 0;
+  top: 50px;
+  width: 200px;
+  padding: 10px;
+  border-right: 1px solid #ccc;
+}
+
+/* Adjust the main content, taking the left TOC into account */
+body {
+  margin-left: 220px;
+}
